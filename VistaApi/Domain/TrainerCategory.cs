@@ -13,9 +13,9 @@ namespace VistaApi.Domain
         [MaxLength(15)]
         public string CategoryCode { get; set; } = null!;
 
-        public Trainer? Trainer { get; set; }
+        public Trainer Trainer { get; set; }
 
-        public Category? Category { get; set; }
+        public Category Category { get; set; }
         // See TrainersDbConext for Foreign Key (Fluent API) definition
 
     }

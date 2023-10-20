@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using System.Reflection.Emit;
 using VistaApi.Domain;
 
 namespace VistaApi.Data
@@ -47,6 +49,17 @@ namespace VistaApi.Data
             builder.Entity<TrainerCategory>()
                 .HasKey(ts => new { ts.TrainerId, ts.CategoryCode });
 
+
+           // builder.Entity<TrainerCategory>()
+           //.HasOne(M => M.)
+           //.WithMany(M => M.)
+           //.HasForeignKey(MenuFoodItem => MenuFoodItem.MenuId);
+
+           // builder.Entity<MenuFoodItems>()
+           // .HasOne(MenuFoodItem => MenuFoodItem.foodItem)
+           // .WithMany(MenuFoodItem => MenuFoodItem.Menus)
+           // .HasForeignKey(MenuFoodItem => MenuFoodItem.FoodItemId);
+
             // EF Core can work out most relationships from the navigation properties 
             // One Category to many TrainerCategories needs to be defined because it does 
             // NOT have a convensional primary column name (i.e. CategoryId) and is based
@@ -65,7 +78,12 @@ namespace VistaApi.Data
             builder.Entity<Trainer>()
                 .HasMany(c => c.TrainerCategories)
                 .WithOne(tr => tr.Trainer)
-                .OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(tr => tr.TrainerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+
+
+
 
             // Insert Seed/Test Data
             builder.Entity<Category>().HasData(

@@ -11,8 +11,8 @@ using VistaApi.Data;
 namespace VistaApi.Migrations
 {
     [DbContext(typeof(TrainersDbContext))]
-    [Migration("20231020141851_init")]
-    partial class init
+    [Migration("20231020170617_Initial")]
+    partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

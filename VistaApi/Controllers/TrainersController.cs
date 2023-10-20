@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VistaApi.Data;
 using VistaApi.Domain;
+using VistaApi.DTO;
 
 namespace VistaApi.Controllers
 {
@@ -23,32 +24,121 @@ namespace VistaApi.Controllers
 
         // GET: api/Trainers
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Trainer>>> GetTrainers()
+        public async Task<ActionResult<IEnumerable<DTO.TrainerItemDTO>>> GetTrainers()
         {
-          if (_context.Trainers == null)
-          {
-              return NotFound();
-          }
-            return await _context.Trainers.ToListAsync();
+            try
+            {
+                var trainers = await _context.Trainers.ToListAsync();
+                List<DTO.TrainerItemDTO> dto = trainers.Select(c => new DTO.TrainerItemDTO
+                {
+                      TrainerId = c.TrainerId,
+                       Name = c.Name,
+                        Location = c.Location,
+                }
+                ).ToList();
+                return Ok(dto);
+            }
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Unable to Provide Food Items at this time");
+            }
         }
 
         // GET: api/Trainers/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Trainer>> GetTrainer(int id)
+        [HttpGet("{id}/Categories")]
+        public async Task<ActionResult<TrainerCategoryDTO>> GetTrainerCategories(int id)
         {
-          if (_context.Trainers == null)
-          {
-              return NotFound();
-          }
-            var trainer = await _context.Trainers.FindAsync(id);
 
-            if (trainer == null)
+            if (!int.TryParse(id.ToString(), out _))
             {
-                return NotFound();
+                return BadRequest();
             }
 
-            return trainer;
+
+            var trainerDetails = await _context.Trainers.Include(c => c.TrainerCategories).ThenInclude(c => c.Category).SingleOrDefaultAsync(t =>t.TrainerId == id);
+
+            List<DTO.CategoryItemDTO> categories = null;
+            try
+            {
+                categories = trainerDetails.TrainerCategories.Select(c => new CategoryItemDTO
+                {
+                    CategoryCode = c.CategoryCode,
+                    CategoryName = c.Category.CategoryName
+                }).ToList();
+                if (trainerDetails != null)
+                {
+                    TrainerCategoryDTO dto = new TrainerCategoryDTO
+                    {
+                        TrainerId = id,
+                        Name = trainerDetails.Name,
+                        Location = trainerDetails.Location,
+                        Categories = categories
+                    };
+
+                    return Ok(dto);
+                }
+                else
+                {
+                    return StatusCode(StatusCodes.Status204NoContent,"No Categories for this Trainer");
+                }
+            } 
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            
         }
+
+
+        [HttpGet("{id}/Sessions")]
+        public async Task<ActionResult<TrainerSessionDTO>> GetTrainerSessions(int id)
+        {
+
+            if (!int.TryParse(id.ToString(), out _))
+            {
+                return BadRequest();
+            }
+
+            var trainerDetails = await _context.Trainers.Include(c => c.Sessions).SingleOrDefaultAsync(t => t.TrainerId == id);
+
+            List<DTO.SessionItemDTO> sessions = null;
+            try
+            {
+                sessions = trainerDetails.Sessions.Select(c => new SessionItemDTO
+                {
+                     SessionId = c.SessionId,
+                      BookingReference = c.BookingReference,
+                         SessionDate = c.SessionDate,
+
+                }).ToList();
+                if (trainerDetails != null)
+                {
+                    TrainerSessionDTO dto = new TrainerSessionDTO
+                    {
+                        TrainerId = id,
+                        Name = trainerDetails.Name,
+                        Location = trainerDetails.Location,
+                         Sessions = sessions
+                    };
+
+                    return Ok(dto);
+                }
+                else
+                {
+                    return StatusCode(StatusCodes.Status204NoContent, "No Sessions for this Trainer");
+                }
+            }
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+
+        }
+
+
+
 
         // PUT: api/Trainers/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
@@ -80,6 +170,75 @@ namespace VistaApi.Controllers
 
             return NoContent();
         }
+
+
+        [HttpPut("Catergory/{TrainerId}/edit")]
+        public async Task<IActionResult> EditCatergories(int TrainerId, [FromBody] TrainerCategoryEditModel EditModel)
+        {
+            var trainer = await _context.Trainers.FindAsync(TrainerId);
+            if (trainer == null)
+            {
+                return NotFound();
+            }
+
+            
+            var newCats = EditModel.Categories.ToList();
+
+            var currentCats = _context.TrainerCategories.Where(m => m.TrainerId == trainer.TrainerId);
+
+            // Delete items NOT in the inputlist
+            var itemsToDelete = currentCats.Where(item => !newCats.Any(i => i.Equals(item.CategoryCode) && item.TrainerId == trainer.TrainerId)).ToList();
+
+            if (itemsToDelete.Any())
+            {
+                _context.TrainerCategories.RemoveRange(itemsToDelete);
+            }
+
+            // Add items IN the input list
+            foreach (var newItem in newCats)
+            {
+                var exists = currentCats.Any(e => e.CategoryCode.Equals(newItem) && e.TrainerId == trainer.TrainerId);
+
+                if (!exists)
+                {
+                    _context.TrainerCategories.Add(new TrainerCategory{  TrainerId = trainer.TrainerId, CategoryCode = newItem });
+                }
+            }
+
+            try
+            {
+                _context.SaveChanges();
+            }
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            };
+
+
+            return Ok();
+
+        }
+
+
+
+
+
+
+
+        //    try
+        //    {
+        //        _context.SaveChanges();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return NotFound();
+        //    };
+
+
+
+        //    return Ok();
+        //}
+
 
         // POST: api/Trainers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754

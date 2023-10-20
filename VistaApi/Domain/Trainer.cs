@@ -13,7 +13,7 @@ namespace VistaApi.Domain
         [MaxLength(50)]
         public string Location { get; set; } = null!;
 
-        public List<TrainerCategory>? TrainerCategories { get; set; }
+        public List<TrainerCategory> TrainerCategories { get; set; }
 
         public List<Session>? Sessions { get; set; }
 
