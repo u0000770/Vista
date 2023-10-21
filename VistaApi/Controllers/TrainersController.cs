@@ -102,10 +102,10 @@ namespace VistaApi.Controllers
 
             var trainerDetails = await _context.Trainers.Include(c => c.Sessions).SingleOrDefaultAsync(t => t.TrainerId == id);
 
-            List<DTO.SessionItemDTO> sessions = null;
+            List<DTO.SessionBookingDTO> sessions = null;
             try
             {
-                sessions = trainerDetails.Sessions.Select(c => new SessionItemDTO
+                sessions = trainerDetails.Sessions.Select(c => new SessionBookingDTO
                 {
                      SessionId = c.SessionId,
                       BookingReference = c.BookingReference,
@@ -136,7 +136,6 @@ namespace VistaApi.Controllers
 
 
         }
-
 
 
 
@@ -218,26 +217,6 @@ namespace VistaApi.Controllers
             return Ok();
 
         }
-
-
-
-
-
-
-
-        //    try
-        //    {
-        //        _context.SaveChanges();
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return NotFound();
-        //    };
-
-
-
-        //    return Ok();
-        //}
 
 
         // POST: api/Trainers

@@ -45,7 +45,7 @@ namespace VistaApi.DTO
         [MaxLength(50)]
         public string Location { get; set; } = null!;
 
-        public List<DTO.SessionItemDTO> Sessions { get; set; }
+        public List<DTO.SessionBookingDTO> Sessions { get; set; }
 
     }
 
@@ -56,9 +56,26 @@ namespace VistaApi.DTO
         public List<string> Categories { get; set; }
     }
 
-    public class SessionItemDTO
+    //public class SessionItemDTO
+    //{
+    //    [Required]
+    //    public int SessionId { get; set; }
+
+    //    [Required]
+    //    public DateTime SessionDate { get; set; }
+
+    //    [MaxLength(40)]
+    //    public string? BookingReference { get; set; } // Allow nulls
+
+    //}
+
+    public class SessionBookingDTO
     {
+        [Required]
         public int SessionId { get; set; }
+
+        [Required]
+        public int TrainerId { get; set; }
 
         [Required]
         public DateTime SessionDate { get; set; }
