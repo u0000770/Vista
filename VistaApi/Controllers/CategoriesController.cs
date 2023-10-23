@@ -61,7 +61,6 @@ namespace VistaApi.Controllers
             {
                 return StatusCode(StatusCodes.Status400BadRequest);
             }
-
             try
             {
                 var category = await _context.Categories.FindAsync(code);
@@ -82,8 +81,9 @@ namespace VistaApi.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
-
         }
+
+
 
         // PUT: api/Categories/5
         /// <summary>
@@ -95,30 +95,31 @@ namespace VistaApi.Controllers
         [HttpPut("{code}")]
         public async Task<IActionResult> PutCategory(string code, DTO.CategoryItemDTO category)
         {
+            // protecting my service from silly requests
             if ( String.IsNullOrEmpty(code) || code.Length > 15 || code != category.CategoryCode  || !ModelState.IsValid)
             {
                 return StatusCode(StatusCodes.Status400BadRequest);
             }
-
-            var oldCategory = await _context.Categories.FindAsync(code);
-
-            if (oldCategory == null)
-            {
-                return StatusCode(StatusCodes.Status404NotFound);
-            }
-
-            oldCategory.CategoryName = category.CategoryName;
-            _context.Entry(oldCategory).State = EntityState.Modified;
-
+            
+            // lets make the changes
             try
             {
+                var oldCategory = await _context.Categories.FindAsync(code);
+                // do i have have an object to modify
+                if (oldCategory == null)
+                {
+                    return StatusCode(StatusCodes.Status404NotFound);
+                }
+                // not going to allow the outside to change Category Code
+                oldCategory.CategoryName = category.CategoryName;
+                _context.Entry(oldCategory).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
             }
             catch
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
-
+            // 204 OK and there is nothing to see here 
             return StatusCode(StatusCodes.Status204NoContent);
         }
 
@@ -131,11 +132,18 @@ namespace VistaApi.Controllers
         [HttpPost]
         public async Task<ActionResult<Category>> PostCategory(DTO.CategoryItemDTO category)
         {
-
+            // Have a got a Category I can add
             if (!ModelState.IsValid)
             {
-                return BadRequest();
+                return StatusCode(StatusCodes.Status400BadRequest);
             }
+            // does this code already exist
+            if (CategoryExists(category.CategoryCode))
+            {
+                return StatusCode(StatusCodes.Status409Conflict);
+            }
+
+            // Lets create it and Add it.
             try
             {
                 Category newCategory = new Category
@@ -147,18 +155,10 @@ namespace VistaApi.Controllers
                 _context.Categories.Add(newCategory);
                 await _context.SaveChangesAsync();
             }
-            catch
-            {
-                if (CategoryExists(category.CategoryCode))
-                {
-                    return StatusCode(StatusCodes.Status409Conflict);
-                }
-                else
-                {
+            catch 
+            {   
                     return StatusCode(StatusCodes.Status500InternalServerError);
-                }
             }
-
             return CreatedAtAction("GetCategory", new { code = category.CategoryCode }, category);
         }
 
@@ -171,12 +171,11 @@ namespace VistaApi.Controllers
         [HttpDelete("{code}")]
         public async Task<IActionResult> DeleteCategory(string code)
         {
-            // not really required but its the way i role
-            if (String.IsNullOrEmpty(code))
+            // have you asked me a silly question
+            if (code.Length > 15)
             {
                 return StatusCode(StatusCodes.Status400BadRequest);
             }
-
             try
             {
                 var category = await _context.Categories.FindAsync(code);

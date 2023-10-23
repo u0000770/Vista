@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Humanizer;
+using System.ComponentModel.DataAnnotations;
 using VistaApi.Domain;
 
 namespace VistaApi.DTO
@@ -43,6 +44,25 @@ namespace VistaApi.DTO
 
         public List<DTO.CategoryItemDTO> Categories { get; set; }
 
+        static public TrainerCategoryDTO buildDTO(Trainer trainer)
+        {
+            List<DTO.CategoryItemDTO> categories = new List<CategoryItemDTO>();
+            TrainerCategoryDTO dto = new TrainerCategoryDTO();
+            categories = trainer.TrainerCategories.Select(c => new CategoryItemDTO
+            {
+                CategoryCode = c.CategoryCode,
+                CategoryName = c.Category.CategoryName
+            }).ToList();
+            if (categories.Count > 0)
+            {
+                dto.TrainerId = trainer.TrainerId;
+                dto.Name = trainer.Name;
+                dto.Location = trainer.Location;
+                dto.Categories = categories;
+                return dto;
+            }
+            return null;
+        }
     }
 
     public class TrainerSessionDTO

@@ -56,48 +56,39 @@ namespace VistaApi.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id}/Categories")]
-        public async Task<ActionResult<TrainerCategoryDTO>> GetTrainerCategories(int id)
+        public async Task<ActionResult<TrainerCategoryDTO>> GetCategories(int id)
         {
-
-            if (!int.TryParse(id.ToString(), out _))
+            Trainer? trainer = null;
+            try // lets get the Trainers Categories from the Database
             {
-                return BadRequest();
-            }
-
-
-            var trainerDetails = await _context.Trainers.Include(c => c.TrainerCategories).ThenInclude(c => c.Category).SingleOrDefaultAsync(t =>t.TrainerId == id);
-
-            List<DTO.CategoryItemDTO> categories = null;
-            try
-            {
-                categories = trainerDetails.TrainerCategories.Select(c => new CategoryItemDTO
-                {
-                    CategoryCode = c.CategoryCode,
-                    CategoryName = c.Category.CategoryName
-                }).ToList();
-                if (trainerDetails != null)
-                {
-                    TrainerCategoryDTO dto = new TrainerCategoryDTO
-                    {
-                        TrainerId = id,
-                        Name = trainerDetails.Name,
-                        Location = trainerDetails.Location,
-                        Categories = categories
-                    };
-
-                    return Ok(dto);
-                }
-                else
-                {
-                    return StatusCode(StatusCodes.Status204NoContent,"No Categories for this Trainer");
-                }
+                trainer = await GetTrainerCategories(id);
             } 
             catch
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            
+            if (trainer != null) // if we have a trainer construct a DTO
+            {
+                var dto = TrainerCategoryDTO.buildDTO(trainer);
+                if (dto != null) // if its null we have no Categories for this trainer
+                {
+                    return Ok(dto);
+                }
+                else
+                {
+                    return StatusCode(StatusCodes.Status204NoContent);
+                }
+            } 
+            else
+            {
+                return StatusCode(StatusCodes.Status404NotFound);
+            }           
+        }
+
+        private async Task<Trainer?> GetTrainerCategories(int id)
+        {
+            return await _context.Trainers.Include(c => c.TrainerCategories).ThenInclude(c => c.Category).SingleOrDefaultAsync(t => t.TrainerId == id);
         }
 
         /// <summary>
@@ -115,16 +106,14 @@ namespace VistaApi.Controllers
                 return BadRequest();
             }
 
-            var trainerDetails = await _context.Trainers.Include(c => c.Sessions).SingleOrDefaultAsync(t => t.TrainerId == id);
-
-            List<DTO.SessionBookingDTO> sessions = null;
             try
             {
-                sessions = trainerDetails.Sessions.Select(c => new SessionBookingDTO
+                Trainer? trainerDetails = await GetTrainerSessionById(id);
+                List<DTO.SessionBookingDTO> sessions = trainerDetails.Sessions.Select(c => new SessionBookingDTO
                 {
-                     SessionId = c.SessionId,
-                      BookingReference = c.BookingReference,
-                         SessionDate = c.SessionDate,
+                    SessionId = c.SessionId,
+                    BookingReference = c.BookingReference,
+                    SessionDate = c.SessionDate,
 
                 }).ToList();
                 if (trainerDetails != null)
@@ -134,7 +123,7 @@ namespace VistaApi.Controllers
                         TrainerId = id,
                         Name = trainerDetails.Name,
                         Location = trainerDetails.Location,
-                         Sessions = sessions
+                        Sessions = sessions
                     };
 
                     return Ok(dto);
@@ -150,6 +139,11 @@ namespace VistaApi.Controllers
             }
 
 
+        }
+
+        private async Task<Trainer?> GetTrainerSessionById(int id)
+        {
+            return await _context.Trainers.Include(c => c.Sessions).SingleOrDefaultAsync(t => t.TrainerId == id);
         }
 
 
@@ -190,57 +184,126 @@ namespace VistaApi.Controllers
             return NoContent();
         }
 
-
-        [HttpPut("Catergory/{TrainerId}/edit")]
+        /// <summary>
+        /// Uses a list of CategoryCodes to either Delete items NOT in the input list OR Add items IN the input list
+        /// </summary>
+        [HttpPut("Catergory/{TrainerId}/Edit")]
         public async Task<IActionResult> EditCatergories(int TrainerId, [FromBody] TrainerCategoryEditModel EditModel)
         {
-            var trainer = await _context.Trainers.FindAsync(TrainerId);
-            if (trainer == null)
+            if (!ModelState.IsValid || TrainerId != EditModel.TrainerId)
             {
-                return NotFound();
+                return StatusCode(StatusCodes.Status400BadRequest);
             }
-
-            
-            var newCats = EditModel.Categories.ToList();
-
-            var currentCats = _context.TrainerCategories.Where(m => m.TrainerId == trainer.TrainerId);
-
-            // Delete items NOT in the inputlist
-            var itemsToDelete = currentCats.Where(item => !newCats.Any(i => i.Equals(item.CategoryCode) && item.TrainerId == trainer.TrainerId)).ToList();
-
-            if (itemsToDelete.Any())
-            {
-                _context.TrainerCategories.RemoveRange(itemsToDelete);
-            }
-
-            // Add items IN the input list
-            foreach (var newItem in newCats)
-            {
-                var exists = currentCats.Any(e => e.CategoryCode.Equals(newItem) && e.TrainerId == trainer.TrainerId);
-
-                if (!exists)
-                {
-                    _context.TrainerCategories.Add(new TrainerCategory{  TrainerId = trainer.TrainerId, CategoryCode = newItem });
-                }
-            }
-
             try
             {
+                var trainer = await _context.Trainers.FindAsync(TrainerId);
+                if (trainer == null)
+                {
+                    return StatusCode(StatusCodes.Status404NotFound);
+                }
+
+                var newCats = EditModel.Categories.ToList();
+                if (newCats.Count == 0 || AnyInputIsNotValid(newCats))
+                {
+                    return StatusCode(StatusCodes.Status400BadRequest);
+                }
+
+                // So what are this Trainers current Categories?
+                var currentCats = _context.TrainerCategories.Where(m => m.TrainerId == trainer.TrainerId).ToList();
+
+                // Deletes items in the input list
+                if (currentCats.Count() > 0)
+                {
+                    var itemsToDelete = currentCats.Where(item => !newCats.Any(i => i == item.CategoryCode)).ToList();
+                    if (itemsToDelete.Any())
+                    {
+                        _context.TrainerCategories.RemoveRange(itemsToDelete);
+                    }
+                }
+
+                // Add items IN the input list
+                foreach (var newItem in newCats)
+                {
+                    var exists = currentCats.Any(e => e.CategoryCode.Equals(newItem) && e.TrainerId == trainer.TrainerId);
+
+                    if (!exists)
+                    {
+                        _context.TrainerCategories.Add(new TrainerCategory { TrainerId = trainer.TrainerId, CategoryCode = newItem });
+                    }
+                }
+
                 _context.SaveChanges();
             }
             catch
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
-            };
 
-
+            }       
             return Ok();
-
         }
+
+        //public async Task<IActionResult> SimplerEditCategories(int TrainerId, [FromBody] TrainerCategoryEditModel EditModel)
+        //{
+        //    if (!ModelState.IsValid || TrainerId != EditModel.TrainerId)
+        //    {
+        //        return BadRequest();
+        //    }
+
+        //    try
+        //    {
+        //        var trainer = await _context.Trainers.FindAsync(TrainerId);
+        //        if (trainer == null)
+        //        {
+        //            return NotFound();
+        //        }
+
+        //        var newCats = EditModel.Categories.ToList();
+        //        if (newCats.Count == 0 || AnyInputIsNotValid(newCats))
+        //        {
+        //            return BadRequest();
+        //        }
+
+        //        var currentCats = _context.TrainerCategories
+        //            .Where(m => m.TrainerId == trainer.TrainerId)
+        //            .ToList();
+
+        //        // Delete items not in the input list
+        //        var itemsToDelete = currentCats
+        //            .Where(item => !newCats.Contains(item.CategoryCode))
+        //            .ToList();
+
+        //        if (itemsToDelete.Any())
+        //        {
+        //            _context.TrainerCategories.RemoveRange(itemsToDelete);
+        //        }
+
+        //        // Add items in the input list
+        //        foreach (var newItem in newCats)
+        //        {
+        //            var exists = currentCats.Any(e => e.CategoryCode == newItem);
+
+        //            if (!exists)
+        //            {
+        //                _context.TrainerCategories.Add(new TrainerCategory { TrainerId = trainer.TrainerId, CategoryCode = newItem });
+        //            }
+        //        }
+
+        //        _context.SaveChanges();
+        //    }
+        //    catch
+        //    {
+        //        return StatusCode(StatusCodes.Status500InternalServerError);
+        //    }
+
+        //    return Ok();
+        //}
+
 
 
         // POST: api/Trainers
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        /// <summary>
+        /// Add a Trainer to the Collection
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<TrainerDTO>> PostTrainer(TrainerDTO trainer)
         {
@@ -271,6 +334,7 @@ namespace VistaApi.Controllers
         }
 
         // DELETE: api/Trainers/5
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTrainer(int id)
         {
@@ -293,6 +357,16 @@ namespace VistaApi.Controllers
         private bool TrainerExists(int id)
         {
             return (_context.Trainers?.Any(e => e.TrainerId == id)).GetValueOrDefault();
+        }
+
+        private bool CategoryDoesNotExist(string id)
+        {
+            return !_context.Categories.Any(e => e.CategoryCode == id);
+        }
+
+        private bool AnyInputIsNotValid(List<string> inputCodes)
+        {
+            return inputCodes.Any(code => !_context.Categories.Any(e => e.CategoryCode == code));
         }
     }
 }

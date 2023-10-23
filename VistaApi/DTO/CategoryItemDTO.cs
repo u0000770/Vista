@@ -12,6 +12,5 @@ namespace VistaApi.DTO
             [Required]
             [MaxLength(30)]
             public string CategoryName { get; set; } = null!;
-
-        }
     }
+}

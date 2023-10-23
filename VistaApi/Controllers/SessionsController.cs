@@ -74,7 +74,7 @@ namespace VistaApi.Controllers
         [HttpPut("{sessionId}/book")]
         public async Task<IActionResult> BookSession(int sessionId, SessionBookingDTO session)
         {
-            if (sessionId != session.SessionId)
+            if (sessionId != session.SessionId || !ModelState.IsValid)
             {
                 return BadRequest();
             }
@@ -135,7 +135,6 @@ namespace VistaApi.Controllers
             return NoContent();
         }
 
-
         [HttpPut("{sessionId}/edit")]
         public async Task<IActionResult> EditSession(int sessionId, SessionBookingDTO session)
         {
@@ -180,7 +179,6 @@ namespace VistaApi.Controllers
 
             return NoContent();
         }
-
 
         // POST: api/Sessions
         [HttpPost]
