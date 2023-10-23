@@ -23,6 +23,10 @@ namespace VistaApi.Controllers
         }
 
         // GET: api/Trainers
+        /// <summary>
+        /// Returns a List of TrainerItemDTO
+        /// </summary>
+        /// <returns></returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DTO.TrainerItemDTO>>> GetTrainers()
         {
@@ -40,11 +44,17 @@ namespace VistaApi.Controllers
             }
             catch
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "Unable to Provide Food Items at this time");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Unable to Provide Data at this time");
             }
         }
 
         // GET: api/Trainers/5
+        /// <summary>
+        /// Returns a specific of TrainerCategoryDTO when provided with a valid id.
+        /// TrainerCategoryDTO contains Core Trainer Info plus a list of CategoryItemDTO that Trainer is assocaited with.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id}/Categories")]
         public async Task<ActionResult<TrainerCategoryDTO>> GetTrainerCategories(int id)
         {
@@ -90,7 +100,12 @@ namespace VistaApi.Controllers
             
         }
 
-
+        /// <summary>
+        /// Returns a specific of TrainerSessionDTO when provided with a valid id.
+        /// TrainerSessionDTO contains Core Trainer Info plus a list of SessionBookingDTO that Trainer is assocaited with.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id}/Sessions")]
         public async Task<ActionResult<TrainerSessionDTO>> GetTrainerSessions(int id)
         {
@@ -140,7 +155,12 @@ namespace VistaApi.Controllers
 
 
         // PUT: api/Trainers/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="trainer"></param>
+        /// <returns></returns>
         [HttpPut("{id}")]
         public async Task<IActionResult> PutTrainer(int id, Trainer trainer)
         {
@@ -222,16 +242,32 @@ namespace VistaApi.Controllers
         // POST: api/Trainers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Trainer>> PostTrainer(Trainer trainer)
+        public async Task<ActionResult<TrainerDTO>> PostTrainer(TrainerDTO trainer)
         {
-          if (_context.Trainers == null)
-          {
-              return Problem("Entity set 'TrainersDbContext.Trainers'  is null.");
-          }
-            _context.Trainers.Add(trainer);
-            await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetTrainer", new { id = trainer.TrainerId }, trainer);
+          if  (!ModelState.IsValid)
+          {
+                return StatusCode(StatusCodes.Status400BadRequest);
+          }
+
+            Trainer newTrainer = new Trainer
+            {
+                Name = trainer.Name,
+                Location = trainer.Location,
+            };
+
+            try
+            {
+                _context.Trainers.Add(newTrainer);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+          
+
+            return CreatedAtAction("GetTrainer", new { id = newTrainer.TrainerId }, newTrainer);
         }
 
         // DELETE: api/Trainers/5
@@ -240,7 +276,7 @@ namespace VistaApi.Controllers
         {
             if (_context.Trainers == null)
             {
-                return NotFound();
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
             var trainer = await _context.Trainers.FindAsync(id);
             if (trainer == null)
