@@ -22,6 +22,10 @@ namespace VistaApi.Controllers
         }
 
         // GET: api/Categories
+        /// <summary>
+        /// Returns a List of CategoriesItemDTOs
+        /// </summary>
+        /// <returns>List of CatergoryDTO</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DTO.CategoryItemDTO>>> GetCategories()
         {
@@ -44,22 +48,28 @@ namespace VistaApi.Controllers
         }
 
         // GET: api/Categories/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<DTO.CategoryItemDTO>> GetCategory(string id)
+        /// <summary>
+        /// Returns a specific CategoryItemDTO for specific provided code > 15 char
+        /// </summary>
+        /// <param name="code"></param>
+        /// <returns>200</returns>
+        [HttpGet("{code}")]
+        public async Task<ActionResult<DTO.CategoryItemDTO>> GetCategory(string code)
         {
             // not really required but its the way i role
-            if (String.IsNullOrEmpty(id) || id.Length > 15)
+            if (String.IsNullOrEmpty(code) || code.Length > 15)
             {
                 return StatusCode(StatusCodes.Status400BadRequest);
             }
 
             try
             {
-                var category = await _context.Categories.FindAsync(id);
+                var category = await _context.Categories.FindAsync(code);
                 if (category == null)
                 {
                     return NotFound();
                 }
+
                 var dto = new DTO.CategoryItemDTO
                 {
                     CategoryCode = category.CategoryCode,
@@ -73,27 +83,28 @@ namespace VistaApi.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-
-            
-
-    
         }
 
         // PUT: api/Categories/5
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutCategory(string id, DTO.CategoryItemDTO category)
+        /// <summary>
+        /// Allows update of Category Name for a specified Code > 15 char
+        /// </summary>
+        /// <param name="code"></param>
+        /// <param name="category"></param>
+        /// <returns>204</returns>
+        [HttpPut("{code}")]
+        public async Task<IActionResult> PutCategory(string code, DTO.CategoryItemDTO category)
         {
-            if ( String.IsNullOrEmpty(id) || id.Length > 15 || id != category.CategoryCode )
+            if ( String.IsNullOrEmpty(code) || code.Length > 15 || code != category.CategoryCode  || !ModelState.IsValid)
             {
-                return BadRequest();
+                return StatusCode(StatusCodes.Status400BadRequest);
             }
 
-            var oldCategory = await _context.Categories.FindAsync(id);
+            var oldCategory = await _context.Categories.FindAsync(code);
 
             if (oldCategory == null)
             {
-                return NotFound();
+                return StatusCode(StatusCodes.Status404NotFound);
             }
 
             oldCategory.CategoryName = category.CategoryName;
@@ -108,10 +119,15 @@ namespace VistaApi.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            return NoContent();
+            return StatusCode(StatusCodes.Status204NoContent);
         }
 
         // POST: api/Categories
+        /// <summary>
+        /// Uses a CategoryItem DTO to ADD a Category to the underlying collection. 
+        /// </summary>
+        /// <param name="category"></param>
+        /// <returns></returns>
         [HttpPost]
         public async Task<ActionResult<Category>> PostCategory(DTO.CategoryItemDTO category)
         {
@@ -143,22 +159,27 @@ namespace VistaApi.Controllers
                 }
             }
 
-            return CreatedAtAction("GetCategory", new { id = category.CategoryCode }, category);
+            return CreatedAtAction("GetCategory", new { code = category.CategoryCode }, category);
         }
 
         // DELETE: api/Categories/ER
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCategory(string id)
+        /// <summary>
+        /// Uses Category Code to select and Remove a Category from the underlying Collection
+        /// </summary>
+        /// <param name="code"></param>
+        /// <returns></returns>
+        [HttpDelete("{code}")]
+        public async Task<IActionResult> DeleteCategory(string code)
         {
             // not really required but its the way i role
-            if (String.IsNullOrEmpty(id))
+            if (String.IsNullOrEmpty(code))
             {
                 return StatusCode(StatusCodes.Status400BadRequest);
             }
 
             try
             {
-                var category = await _context.Categories.FindAsync(id);
+                var category = await _context.Categories.FindAsync(code);
                 if (category == null)
                 {
                     return StatusCode(StatusCodes.Status404NotFound);

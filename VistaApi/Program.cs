@@ -1,3 +1,4 @@
+using System.Reflection;
 using VistaApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,8 +12,13 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<TrainersDbContext>();
 
-var app = builder.Build();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory,
+        $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"));
+});
 
+var app = builder.Build();
 
 
 // Configure the HTTP request pipeline.
@@ -21,6 +27,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+
 
 app.UseHttpsRedirection();
 
